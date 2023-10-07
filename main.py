@@ -8,10 +8,11 @@ from flasgger import Swagger
 
 # conexão com DB
 mydb = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='Sant',
-    database='bdsebo'
+    host='seeEadCampus',
+    user='seeEadCampus',
+    password='seeEadCampus',
+    database='seeEadCampus',
+    port='seeEadCampus'
 )
 # agente DB
 my_cursor = mydb.cursor()
