@@ -8,12 +8,13 @@ from flasgger import Swagger
 
 # conexão com DB
 mydb = mysql.connector.connect(
-    host='seeEadCampus',
-    user='seeEadCampus',
-    password='seeEadCampus',
-    database='seeEadCampus',
-    port='seeEadCampus'
+    host="host",
+    user="user",
+    password="password",
+    database="database",
+    port=0000,
 )
+
 # agente DB
 my_cursor = mydb.cursor()
 
@@ -26,35 +27,29 @@ swagger = Swagger(app)
 def generate_token(user_name):
     payload = {
         "sub": user_name,
-        "exp": (datetime.datetime.utcnow() + datetime.timedelta(hours=1))
+        "exp": (datetime.datetime.utcnow() + datetime.timedelta(hours=1)),
     }
-    token = jwt.encode(
-        payload=payload, key='SECRET_KEY'
-    )
+    token = jwt.encode(payload=payload, key="SECRET_KEY")
     return token
 
 
 def get_authenticated_user():
-    token = request.headers.get('Authorization')
+    token = request.headers.get("Authorization")
 
     if not token:
         return None
 
     try:
         # Decodifique o token JWT usando a chave secreta
-        payload = jwt.decode(
-            token,
-            key='SECRET_KEY',
-            algorithms=['HS256']
-        )
-        print(payload['sub'])
-        return payload['sub']
+        payload = jwt.decode(token, key="SECRET_KEY", algorithms=["HS256"])
+        print(payload["sub"])
+        return payload["sub"]
 
     except jwt.ExpiredSignatureError:  # type: ignore
-        return 'O TOKEN EXPIROU !!!!!!!!', None  # Token expirado
+        return "O TOKEN EXPIROU !!!!!!!!", None  # Token expirado
 
     except jwt.InvalidTokenError:  # type: ignore
-        return 'O TOKEN INVALIDO !!!!!!', None  # Token inválido
+        return "O TOKEN INVALIDO !!!!!!", None  # Token inválido
 
 
 def have_perm(user_id):
@@ -62,7 +57,7 @@ def have_perm(user_id):
     my_cursor.execute(sql)
     result = my_cursor.fetchall()
 
-    if result[0][0] == 'admin' or result[0][0] == 'vendedor':
+    if result[0][0] == "admin" or result[0][0] == "vendedor":
         return True
 
     return None
@@ -79,10 +74,12 @@ def check_password(email_db, passw_login):
         return True
 
     return None
+
+
 # USERS
 
 
-@app.route('/users', methods=['POST'])
+@app.route("/users/signup", methods=["POST"])
 def create_user():
     """
     Create a new user.
@@ -118,7 +115,7 @@ def create_user():
         description: Internal server error.
     """
     new_user = request.get_json()
-    email = new_user.get('email')
+    email = new_user.get("email")
 
     # Verifique se o email já está cadastrado
     sql_check_email = "SELECT email FROM users WHERE email = %s"
@@ -126,15 +123,20 @@ def create_user():
     existing_email = my_cursor.fetchone()
 
     if existing_email:
-        return 'Email já cadastrado', 400
+        return "Email já cadastrado", 400
 
     # Hash da senha
-    hashed_password = sha256(new_user['password'].encode()).hexdigest()
+    hashed_password = sha256(new_user["password"].encode()).hexdigest()
 
     # Inserir o novo usuário no banco de dados
     sql_insert_user = "INSERT INTO users (name, email, password, usertype, status) VALUES (%s, %s, %s, %s, %s)"
-    user_data = (new_user['name'], email, hashed_password,
-                 new_user['usertype'], new_user['status'])
+    user_data = (
+        new_user["name"],
+        email,
+        hashed_password,
+        new_user["usertype"],
+        new_user["status"],
+    )
 
     try:
         my_cursor.execute(sql_insert_user, user_data)
@@ -145,7 +147,7 @@ def create_user():
     return jsonify(new_user), 201
 
 
-@app.route('/admin/users', methods=['GET'])
+@app.route("/admin/users", methods=["GET"])
 def get_users():
     """
     Get a list of users (admin only).
@@ -181,30 +183,31 @@ def get_users():
     id_by_token = get_authenticated_user()
 
     if not have_perm(id_by_token):
-        return {
-            "message": "Apenas admins podem listar usuários"
-        }, 403
+        return {"message": "Apenas admins podem listar usuários"}, 403
 
     # Consulta SQL para selecionar os usuários
-    sql_select_users = 'SELECT * FROM users'
+    sql_select_users = "SELECT * FROM users"
     my_cursor.execute(sql_select_users)
     users_db = my_cursor.fetchall()
 
     # Converter os resultados da consulta em um formato JSON
-    users_converted = [{
-        "ID": user[0],
-        "name": user[1],
-        "email": user[2],
-        "password": user[3],  # Considere não retornar a senha no JSON
-        "usertype": user[4],
-        "status": user[5]
-    } for user in users_db]
+    users_converted = [
+        {
+            "ID": user[0],
+            "name": user[1],
+            "email": user[2],
+            "password": user[3],  # Considere não retornar a senha no JSON
+            "usertype": user[4],
+            "status": user[5],
+        }
+        for user in users_db
+    ]
 
     # Retornar os usuários com uma resposta HTTP 200 OK
     return jsonify(users_converted), 200
 
 
-@app.route('/admin/login', methods=['POST'])
+@app.route("/admin/login", methods=["POST"])
 def login_admin():
     """
     Admin login.
@@ -244,8 +247,8 @@ def login_admin():
         description: User account is deactivated.
     """
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    email = data.get("email")
+    password = data.get("password")
 
     if not email or not password:
         return {"message": "Credenciais incompletas"}, 400
@@ -259,22 +262,19 @@ def login_admin():
 
     sql_status = user_db[5]
 
-    if sql_status == 'deactivated':
+    if sql_status == "deactivated":
         return {"message": "Seu usuário está desativado"}, 403
 
     if check_password(user_db[2], password):
         # Gere um token JWT
         token = generate_token(user_db[0])
-        response_data = {
-            "token": str(token),
-            "message": "Login bem-sucedido"
-        }
+        response_data = {"token": str(token), "message": "Login bem-sucedido"}
         return response_data, 200
 
     return {"message": "Credenciais inválidas"}, 401
 
 
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
     """
     User login.
@@ -312,8 +312,8 @@ def login():
         description: User account is deactivated.
     """
     data = request.get_json()
-    email = data['email']
-    passw = data['password']
+    email = data["email"]
+    passw = data["password"]
     user_db = None
 
     sql = f"SELECT * FROM users WHERE email = '{email}'"
@@ -322,35 +322,26 @@ def login():
 
     sql_status = user_db[0][5]
 
-    if sql_status == 'deactivated':
+    if sql_status == "deactivated":
         return "Seu usuario está desativado"
 
     elif user_db is not None and check_password(email, passw):
-        if user_db[0][4] == 'vendedor':
+        if user_db[0][4] == "vendedor":
             # Gere um token JWT
             token = generate_token(user_db[0])
-            response_data = {
-                "token": str(token),
-                "message": "Login bem-sucedido"
-            }
+            response_data = {"token": str(token), "message": "Login bem-sucedido"}
             return response_data, 200
 
-        elif user_db[0][4] == 'coprador':
-            response_data = {
-                "message": "Login bem-sucedido"
-            }
+        elif user_db[0][4] == "coprador":
+            response_data = {"message": "Login bem-sucedido"}
             return response_data, 200
 
-        return {
-            "message": "Tipo de Usuario não aceito"
-        }, 401
+        return {"message": "Tipo de Usuario não aceito"}, 401
 
-    return {
-        "message": "Credenciais inválidas ou tipo de usuario não aceito"
-    }, 401
+    return {"message": "Credenciais inválidas ou tipo de usuario não aceito"}, 401
 
 
-@app.route('/user/<int:id>', methods=['PUT'])  # type: ignore
+@app.route("/user/<int:id>", methods=["PUT"])  # type: ignore
 def edit_perfil(id):
     """
     Edit user profile (admin or self-editing).
@@ -416,32 +407,30 @@ def edit_perfil(id):
     my_cursor.execute(sql)
     result_usertype_db_token = my_cursor.fetchall()
 
-    if id_by_token == id or result_usertype_db_token[0][0] == 'admin':
+    if id_by_token == id or result_usertype_db_token[0][0] == "admin":
         user_edited = request.get_json()
-        hash_passw = sha256(user_edited['password'].encode()).hexdigest()
+        hash_passw = sha256(user_edited["password"].encode()).hexdigest()
         sql = "UPDATE users SET name = %s, email = %s, password = %s, usertype = %s, status = %s WHERE idusers = %s"
         values = (
-            user_edited.get('name'),
-            user_edited.get('email'),
+            user_edited.get("name"),
+            user_edited.get("email"),
             hash_passw,
-            user_edited.get('usertype'),
-            user_edited.get('status'),
-            id
+            user_edited.get("usertype"),
+            user_edited.get("status"),
+            id,
         )
         my_cursor.execute(sql, values)
         mydb.commit()
         return jsonify(user_edited)
 
-    elif result_usertype_db_token[0][0] != 'admin':
+    elif result_usertype_db_token[0][0] != "admin":
         return jsonify({"message": "Você só pode editar seu próprio usuário"})
 
     elif not result_id:
         return jsonify({"message": "ID não encontrado"}), 404
 
 
-@app.route(
-    '/admin/users/softdelete/<int:id>', methods=['DELETE']
-)  # type: ignore
+@app.route("/admin/users/softdelete/<int:id>", methods=["DELETE"])  # type: ignore
 def delete_user(id):
     """
     Soft delete a user (admin only).
@@ -496,10 +485,11 @@ def delete_user(id):
 
     return {"message": "Usuário não encontrado"}, 404
 
+
 # ITEMS
 
 
-@app.route('/items', methods=['GET'])
+@app.route("/items", methods=["GET"])
 def get_books():
     """
     Get a list of items.
@@ -536,26 +526,30 @@ def get_books():
         description: No items found.
     """
     # Consulta SQL para selecionar os itens
-    my_cursor.execute('SELECT * FROM items')
+    my_cursor.execute("SELECT * FROM items")
     items_db = my_cursor.fetchall()
 
     # Converter os resultados da consulta em um formato JSON
-    items_converted = [{
-        "id": item[0],
-        "Título": item[1],
-        "Autores": item[2],
-        "Categoria": item[3],
-        "Preço": item[4],
-        "Status": item[5]
-    } for item in items_db]
+    items_converted = [
+        {
+            "id": item[0],
+            "Título": item[1],
+            "Autores": item[2],
+            "Categoria": item[3],
+            "Preço": item[4],
+            "Status": item[5],
+        }
+        for item in items_db
+    ]
 
     # Retornar os itens com uma resposta HTTP 200 OK
     return jsonify(items_converted), 200
 
+
 # Consult by ID -> OK
 
 
-@app.route('/items/<int:id>', methods=['GET'])  # type: ignore
+@app.route("/items/<int:id>", methods=["GET"])  # type: ignore
 def get_book_by_id(id):
     """
     Get item by ID.
@@ -615,7 +609,7 @@ def get_book_by_id(id):
             "Autores": item_db[2],
             "Categoria": item_db[3],
             "Preço": item_db[4],
-            "Status": item_db[5]
+            "Status": item_db[5],
         }
         # Retornar o item com uma resposta HTTP 200 OK
         return jsonify(item_converted), 200
@@ -626,7 +620,7 @@ def get_book_by_id(id):
 # Make Book -> OK
 
 
-@app.route('/items', methods=['POST'])
+@app.route("/items", methods=["POST"])
 def make_book():
     """
     Create a new item.
@@ -699,11 +693,11 @@ def make_book():
     # Inserir o novo livro no banco de dados
     sql_insert_book = "INSERT INTO items (titulo, autor, categoria, preco, status) VALUES (%s, %s, %s, %s, %s)"
     book_data = (
-        new_book['Título'],
-        new_book['Autores'],
-        new_book['Categoria'],
-        new_book['Preço'],
-        new_book['Status']
+        new_book["Título"],
+        new_book["Autores"],
+        new_book["Categoria"],
+        new_book["Preço"],
+        new_book["Status"],
     )
 
     my_cursor.execute(sql_insert_book, book_data)
@@ -711,10 +705,11 @@ def make_book():
 
     return jsonify(new_book), 201
 
+
 # Edit By ID -> OK
 
 
-@app.route('/items/<int:id>', methods=['PUT'])  # type: ignore
+@app.route("/items/<int:id>", methods=["PUT"])  # type: ignore
 def edit_book_by_id(id):
     """
     Update an existing item by ID.
@@ -793,12 +788,12 @@ def edit_book_by_id(id):
     # Atualizar os dados do livro no banco de dados
     sql_update_book = "UPDATE items SET titulo = %s, autor = %s, categoria = %s, preco = %s, status = %s WHERE iditems = %s"
     book_data = (
-        book_edited.get('Título'),
-        book_edited.get('Autores'),
-        book_edited.get('Categoria'),
-        book_edited.get('Preço'),
-        book_edited.get('Status'),
-        id
+        book_edited.get("Título"),
+        book_edited.get("Autores"),
+        book_edited.get("Categoria"),
+        book_edited.get("Preço"),
+        book_edited.get("Status"),
+        id,
     )
 
     my_cursor.execute(sql_update_book, book_data)
@@ -809,10 +804,11 @@ def edit_book_by_id(id):
     else:
         return jsonify({"message": "ID não encontrado"}), 404
 
+
 # Soft Delete -> OK
 
 
-@app.route('/items/disable/<int:id>', methods=['DELETE'])
+@app.route("/items/disable/<int:id>", methods=["DELETE"])
 def delete_book(id):
     """
     Disable an existing item by ID.
@@ -861,12 +857,15 @@ def delete_book(id):
     mydb.commit()
 
     if my_cursor.rowcount > 0:
-        return jsonify({"message": f"Status do item com ID {id} alterado para INATIVO"}), 200
+        return (
+            jsonify({"message": f"Status do item com ID {id} alterado para INATIVO"}),
+            200,
+        )
     else:
         return jsonify({"message": "Nenhum item afetado"}), 204
 
 
-@app.route('/items/disable', methods=['GET'])
+@app.route("/items/disable", methods=["GET"])
 def get_disabled_book():
     """
     Get all inactive items.
@@ -908,17 +907,20 @@ def get_disabled_book():
     items_db = my_cursor.fetchall()
 
     # Converter os resultados da consulta em um formato JSON
-    items_converted = [{
-        "id": item[0],
-        "Título": item[1],
-        "Autores": item[2],
-        "Categoria": item[3],
-        "Preço": item[4],
-        "Status": item[5]
-    } for item in items_db]
+    items_converted = [
+        {
+            "id": item[0],
+            "Título": item[1],
+            "Autores": item[2],
+            "Categoria": item[3],
+            "Preço": item[4],
+            "Status": item[5],
+        }
+        for item in items_db
+    ]
 
     # Retornar os itens com status "INATIVO" com uma resposta HTTP 200 OK
     return jsonify(items_converted), 200
 
 
-app.run(port=5000, host='localhost', debug=True)
+app.run(port=5000, host="localhost", debug=True)
