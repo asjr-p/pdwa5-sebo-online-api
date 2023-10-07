@@ -332,7 +332,7 @@ def login():
             response_data = {"token": str(token), "message": "Login bem-sucedido"}
             return response_data, 200
 
-        elif user_db[0][4] == "coprador":
+        elif user_db[0][4] == "comprador":
             response_data = {"message": "Login bem-sucedido"}
             return response_data, 200
 
