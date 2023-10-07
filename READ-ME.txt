@@ -1,0 +1,12 @@
+Para baixar requirements:
+
+windows:
+	1 - Instale o ambiente virtual para baixar dependencias do projeto: python -m venv venv ()
+	2 - Ative seu ambiente virtual: /venv/Scripts/activate
+	3 - Baixe as dependencias, elas estão no arquivo requirements: pip install -r requirements.txt
+
+Regras de requisições:
+
+Endpoints devem ter tokens, gerados ao realizar login, inseridos no “Header”:
+	Key: Authorization
+	Value: <token>
