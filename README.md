@@ -1,1 +1,1 @@
-**Instruções para testar o projeto foram disponibilizas via EAD CAMPUS (Moodle).**
+**Instruções para testar a aplicação foram disponibilizas via EAD CAMPUS (Moodle).**
