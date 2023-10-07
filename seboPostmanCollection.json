@@ -283,7 +283,7 @@
 					"response": []
 				},
 				{
-					"name": "Uptdate Book",
+					"name": "Update Book",
 					"request": {
 						"method": "PUT",
 						"header": [],
